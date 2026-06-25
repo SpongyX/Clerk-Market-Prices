@@ -19,23 +19,34 @@
   'use strict';
 
   // =========================================================================
-  // CONFIG - the only part you change per client / per Clerk design.
+  // CONFIG - the only part you change per client.
+  // Add one entry per Clerk DESIGN. Each design has its own auto-generated
+  // IDs, so list them all here and the script handles every widget.
   // To find these values: right-click a price in the widget -> Inspect.
   // =========================================================================
   var CONFIG = {
-    // Wraps each individual product card in the widget.
-    cardSelector: '.clerk-slider-item .designs-card',
-
-    // The product link inside a card (standard Shopify - rarely changes).
+    // Applied to every design unless overridden inside a design entry.
+    // Standard Shopify product link - rarely needs changing.
     productLinkSelector: 'a[href*="/products/"]',
 
-    // REGULAR price: element wrapping a single price.
-    regularPriceSelector: '[data-name="container1"][id="wCJychyn"]',
-
-    // SALE price (optional): wraps BOTH the list price and the sale price.
-    // The FIRST <p> = list price, the SECOND <p> = sale price.
-    // Set to null if this design has no sale layout.
-    salePriceSelector: '[data-name="container1"][id="aHJINy4F"]'
+    designs: [
+      {
+        // --- Design 1 (e.g. sliders) ---
+        // Wraps each individual product card.
+        cardSelector: '.clerk-slider-item .designs-card',
+        // REGULAR price: element wrapping a single price.
+        regularPriceSelector: '[data-name="container1"][id="wCJychyn"]',
+        // SALE price (optional): wraps BOTH list price and sale price.
+        // FIRST <p> = list price, SECOND <p> = sale price. null if none.
+        salePriceSelector: '[data-name="container1"][id="aHJINy4F"]'
+      }
+      // ,{
+      //   // --- Design 2 (copy this block per extra design) ---
+      //   cardSelector: '.clerk-grid-item .designs-card',
+      //   regularPriceSelector: '[data-name="container1"][id="XXXXXXXX"]',
+      //   salePriceSelector: null
+      // }
+    ]
   };
   // =========================================================================
 
@@ -64,10 +75,10 @@
       : (priceCents / 100).toFixed(2) + '\u00a0' + currency;
   }
 
-  function updateCard(card, data, currency) {
+  function updateCard(card, design, data, currency) {
     // Sale layout first (list price + sale price).
-    if (CONFIG.salePriceSelector) {
-      var sale = card.querySelector(CONFIG.salePriceSelector);
+    if (design.salePriceSelector) {
+      var sale = card.querySelector(design.salePriceSelector);
       if (sale) {
         var ps = sale.querySelectorAll('p');
         if (ps[0] && data.compare_at_price) {
@@ -80,21 +91,23 @@
       }
     }
     // Regular layout (single price).
-    var reg = card.querySelector(CONFIG.regularPriceSelector);
+    var reg = card.querySelector(design.regularPriceSelector);
     if (reg) {
       var p = reg.querySelector('p') || reg;
       p.textContent = fmt(data.price, currency);
     }
   }
 
-  function hydrate() {
-    var currency = window.Shopify && Shopify.currency && Shopify.currency.active;
-    if (!currency) return;
+  function hydrateDesign(design, currency) {
+    var linkSel = design.productLinkSelector || CONFIG.productLinkSelector;
+    var cards = document.querySelectorAll(design.cardSelector);
 
-    var cards = document.querySelectorAll(CONFIG.cardSelector);
     for (var i = 0; i < cards.length; i++) {
       (function (card) {
-        var link = card.querySelector(CONFIG.productLinkSelector);
+        // Skip cards already processed (a card may match more than one design).
+        if (card.getAttribute('data-clerk-price-done') === currency) return;
+
+        var link = card.querySelector(linkSel);
         if (!link) return;
 
         var m = (link.getAttribute('href') || '').match(/\/products\/([^?#/]+)/);
@@ -103,21 +116,32 @@
         var handle = m[1];
         var key = handle + '_' + currency;
 
-        // In-memory cache: same product in multiple sliders = 1 fetch.
-        if (_priceCache[key]) {
-          updateCard(card, _priceCache[key], currency);
-          return;
+        function apply(data) {
+          updateCard(card, design, data, currency);
+          card.setAttribute('data-clerk-price-done', currency);
         }
+
+        // In-memory cache: same product in multiple widgets = 1 fetch.
+        if (_priceCache[key]) { apply(_priceCache[key]); return; }
 
         fetch('/products/' + handle + '.js')
           .then(function (r) { return r.json(); })
           .then(function (d) {
             var data = { price: d.price, compare_at_price: d.compare_at_price };
             _priceCache[key] = data;
-            updateCard(card, data, currency);
+            apply(data);
           })
           .catch(function () { /* leave original price on failure */ });
       })(cards[i]);
+    }
+  }
+
+  function hydrate() {
+    var currency = window.Shopify && Shopify.currency && Shopify.currency.active;
+    if (!currency) return;
+
+    for (var d = 0; d < CONFIG.designs.length; d++) {
+      hydrateDesign(CONFIG.designs[d], currency);
     }
   }
 

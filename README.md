@@ -106,14 +106,49 @@ differ between designs. To adapt the `CONFIG` block:
 
 ---
 
+## Multiple designs
+
+Each Clerk design has its own auto-generated IDs, so add **one entry per design** to
+the `CONFIG.designs` array. The script runs them all and skips any card it has already
+priced, so designs can safely overlap.
+
+```js
+var CONFIG = {
+  productLinkSelector: 'a[href*="/products/"]', // shared default for all designs
+
+  designs: [
+    {
+      // Design A — homepage sliders
+      cardSelector: '.clerk-slider-item .designs-card',
+      regularPriceSelector: '[data-name="container1"][id="wCJychyn"]',
+      salePriceSelector: '[data-name="container1"][id="aHJINy4F"]'
+    },
+    {
+      // Design B — search / category grid
+      cardSelector: '.clerk-grid-item .designs-card',
+      regularPriceSelector: '[data-name="container1"][id="ZZZZ9999"]',
+      salePriceSelector: null
+    }
+  ]
+};
+```
+
+To add another design, copy a block and fill in its selectors (found via the steps
+above). A design entry may set its own `productLinkSelector` to override the shared
+default.
+
+---
+
 ## Configuration reference
 
-| Key | Description |
-|---|---|
-| `cardSelector` | Wraps each product card in the widget. |
-| `productLinkSelector` | The `/products/...` link inside a card. Usually unchanged. |
-| `regularPriceSelector` | Wrapper of a single (non-sale) price. |
-| `salePriceSelector` | Wrapper of the list + sale price (two `<p>`). `null` if none. |
+| Key | Scope | Description |
+|---|---|---|
+| `productLinkSelector` | top-level | Default `/products/...` link selector for all designs. |
+| `designs[]` | top-level | One entry per Clerk design. |
+| `designs[].cardSelector` | per design | Wraps each product card in that design. |
+| `designs[].regularPriceSelector` | per design | Wrapper of a single (non-sale) price. |
+| `designs[].salePriceSelector` | per design | Wrapper of list + sale price (two `<p>`). `null` if none. |
+| `designs[].productLinkSelector` | per design | Optional override of the top-level link selector. |
 
 ---
 
