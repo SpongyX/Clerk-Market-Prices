@@ -110,19 +110,24 @@
     }
   }
 
-  function start() {
-    Clerk('on', 'rendered', hydrate);
-    hydrate(); // run once now in case Clerk already rendered
+  var _scheduled = false;
+  function scheduleHydrate() {
+    if (_scheduled) return;
+    _scheduled = true;
+    setTimeout(function () { _scheduled = false; hydrate(); }, 50);
   }
 
-  if (typeof Clerk === 'function') {
-    start();
+
+  function observe() {
+    hydrate();
+    var obs = new MutationObserver(scheduleHydrate);
+    obs.observe(document.body, { childList: true, subtree: true });
+    if (typeof Clerk === 'function') Clerk('on', 'rendered', hydrate);
+  }
+
+  if (document.body) {
+    observe();
   } else {
-    // Clerk not ready yet — retry until it is
-    var tries = 0;
-    var iv = setInterval(function () {
-      if (typeof Clerk === 'function') { clearInterval(iv); start(); }
-      else if (++tries > 50) { clearInterval(iv); }
-    }, 100);
+    document.addEventListener('DOMContentLoaded', observe);
   }
 })();
