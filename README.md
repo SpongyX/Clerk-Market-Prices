@@ -17,7 +17,7 @@ On each Clerk render, the script fetches `/products/{handle}.js` for each card. 
 3. In `layout/theme.liquid`, render it after the Clerk tracking snippet:
 
 ```liquid
-{% render 'clerk-tracking' %}
+
 {% render 'clerk-market-price' %}
 ```
 
