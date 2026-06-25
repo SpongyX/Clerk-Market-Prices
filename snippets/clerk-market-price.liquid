@@ -1,0 +1,12 @@
+{% comment %}
+  Clerk x Shopify Markets - Correct Price Display
+  Render this snippet AFTER the Clerk tracking snippet, e.g. in theme.liquid:
+
+    {% if settings.enable_clerk %}
+      {% render 'clerk-tracking' %}
+      {% render 'clerk-market-price' %}
+    {% endif %}
+
+  Requires assets/clerk-market-price.js to be present in the theme.
+{% endcomment %}
+<script src="{{ 'clerk-market-price.js' | asset_url }}" defer="defer"></script>
